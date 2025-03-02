@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Spreadsheet</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    td { border: 1px solid #ccc; padding: 10px; width: 80px; text-align: right; }
+    .bold { font-weight: bold; }
+    .italic { font-style: italic; }
+    .toolbar, .formula-bar { margin-bottom: 10px; }
+    .dragging { background-color: #f0f0f0; }
+    .selected { background-color: #d0e0ff; }
+  </style>
+</head>
+<body>
+  <input class="formula-bar" id="formulaBar" placeholder="Enter formula (e.g., =SUM(A1:B2))" oninput="applyFormula()" />
+  <div class="toolbar">
+    <button onclick="applyBold()">Bold</button>
+    <button onclick="applyItalic()">Italic</button>
+    <button onclick="findAndReplace()">Find & Replace</button>
+    <button onclick="removeDuplicates()">Remove Duplicates</button>
+    <button onclick="saveSpreadsheet()">Save</button>
+    <button onclick="loadSpreadsheet()">Load</button>
+    <button onclick="addRow()">Add Row</button>
+    <button onclick="addColumn()">Add Column</button>
+  </div>
+  <table id="spreadsheet">
+    <script>
+      for (let i = 0; i < 10; i++) {
+        document.write("<tr>");
+        for (let j = 0; j < 10; j++) {
+          document.write(`<td contenteditable="true" id="cell-${i+1}-${j+1}" oninput="updateCell(${i+1}, ${j+1})" onclick="selectCell(this)"></td>`);
+        }
+        document.write("</tr>");
+      }
+    </script>
+  </table>
+  <script>
+    function applyBold() {
+      const cell = document.activeElement;
+      if (cell.tagName === "TD") cell.classList.toggle('bold');
+    }
+    function applyItalic() {
+      const cell = document.activeElement;
+      if (cell.tagName === "TD") cell.classList.toggle('italic');
+    }
+    function findAndReplace() {
+      let findText = prompt("Enter text to find:"), replaceText = prompt("Enter text to replace with:");
+      document.querySelectorAll('#spreadsheet td').forEach(cell => {
+        cell.textContent = cell.textContent.replace(new RegExp(findText, 'g'), replaceText);
+      });
+    }
+    function removeDuplicates() {
+      let seen = new Set();
+      document.querySelectorAll('#spreadsheet td').forEach(cell => {
+        if (seen.has(cell.textContent.trim())) cell.textContent = "";
+        else seen.add(cell.textContent.trim());
+      });
+    }
+    function saveSpreadsheet() {
+      localStorage.setItem('spreadsheetData', JSON.stringify([...document.querySelectorAll('#spreadsheet td')].map(cell => cell.textContent)));
+    }
+    function loadSpreadsheet() {
+      let data = JSON.parse(localStorage.getItem('spreadsheetData') || "[]");
+      document.querySelectorAll('#spreadsheet td').forEach((cell, i) => cell.textContent = data[i] || "");
+    }
+    function addRow() {
+      let table = document.getElementById("spreadsheet");
+      let row = table.insertRow();
+      for (let i = 0; i < table.rows[0].cells.length; i++) {
+        let cell = row.insertCell();
+        cell.contentEditable = "true";
+        cell.id = `cell-${table.rows.length}-${i+1}`;
+        cell.onclick = () => selectCell(cell);
+      }
+    }
+    function addColumn() {
+      document.querySelectorAll("#spreadsheet tr").forEach((row, i) => {
+        let cell = row.insertCell();
+        cell.contentEditable = "true";
+        cell.id = `cell-${i+1}-${row.cells.length}`;
+        cell.onclick = () => selectCell(cell);
+      });
+    }
+    function selectCell(cell) {
+      document.querySelectorAll("#spreadsheet td").forEach(c => c.classList.remove("selected"));
+      cell.classList.add("selected");
+      document.getElementById("formulaBar").value = cell.textContent;
+    }
+    function applyFormula() {
+      let input = document.getElementById("formulaBar").value;
+      let selectedCell = document.querySelector(".selected");
+      if (selectedCell && input.startsWith("=")) {
+        try {
+          let formula = input.substring(1).toUpperCase();
+          if (formula.startsWith("SUM(")) {
+            let range = formula.match(/\((.*?)\)/)[1];
+            selectedCell.textContent = sumRange(range);
+          }
+        } catch (e) {
+          console.error("Invalid formula", e);
+        }
+      }
+    }
+    function sumRange(range) {
+      let [start, end] = range.split(":").map(refToCell);
+      let sum = 0;
+      for (let i = start.row; i <= end.row; i++) {
+        for (let j = start.col; j <= end.col; j++) {
+          let cell = document.getElementById(`cell-${i}-${j}`);
+          sum += parseFloat(cell.textContent) || 0;
+        }
+      }
+      return sum;
+    }
+    function refToCell(ref) {
+      let match = ref.match(/([A-Z]+)([0-9]+)/);
+      let col = match[1].charCodeAt(0) - 65 + 1;
+      let row = parseInt(match[2]);
+      return { row, col };
+    }
+  </script>
+</body>
+</html>
